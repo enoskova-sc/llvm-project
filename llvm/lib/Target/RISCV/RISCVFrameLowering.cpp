@@ -566,7 +566,6 @@ getRVVCalleeSavedInfo(const MachineFunction &MF,
                       const std::vector<CalleeSavedInfo> &CSI) {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   SmallVector<CalleeSavedInfo, 8> RVVCSI;
-
   for (auto &CS : CSI) {
     int FI = CS.getFrameIdx();
     if (FI >= 0 && MFI.getStackID(FI) == TargetStackID::ScalableVector)
@@ -2598,4 +2597,15 @@ int RISCVFrameLowering::getInitialCFAOffset(const MachineFunction &MF) const {
 Register
 RISCVFrameLowering::getInitialCFARegister(const MachineFunction &MF) const {
   return RISCV::X2;
+}
+
+bool RISCVFrameLowering::enableCSRSaveRestorePointsSplit() const {
+  // Zcmp extention introduces cm.push and cm.pop instructions, which allow to
+  // perform all spills and restores in one corresponding instruction. This
+  // contradicts the idea of splitting Save Restore points. "-msave-restore"
+  // does the same, not via new instructions but via save/restore libcalls.
+  if (!STI.hasStdExtZcmp() && !STI.enableSaveRestore() &&
+      !STI.hasVendorXqccmp())
+    return true;
+  return false;
 }
